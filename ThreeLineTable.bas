@@ -1,11 +1,6 @@
 ' ============================================================
-'  Word Macro Toolkit — Table Utilities
 '  Macro 1: SelectAllTables          — Select every table in the document
 '  Macro 2: ConvertToThreeLineTables — Convert all tables to three-line style
-'
-'  How to install:
-'    Open Word -> Alt+F11 -> Insert Module -> Paste this code -> Ctrl+S
-'    Save the document as a macro-enabled file (.docm)
 ' ============================================================
 
 Option Explicit
@@ -16,37 +11,37 @@ Option Explicit
 Sub SelectAllTables()
 
     Dim doc        As Document
+    Dim tbl        As Table
     Dim tableCount As Integer
 
     Set doc = ActiveDocument
     tableCount = doc.Tables.Count
 
     If tableCount = 0 Then
-        MsgBox "No tables were found in this document.", _
-               vbInformation, "Notice"
+        MsgBox "No tables found in this document.", vbInformation, "Notice"
         Exit Sub
     End If
 
-    If tableCount = 1 Then
-        doc.Tables(1).Select
-        MsgBox "1 table selected.", vbInformation, "Done"
-        Exit Sub
-    End If
+    ' Select each table one by one
+    ' Word does not support discontinuous selections,
+    ' so each call moves the cursor to that table.
+    ' All tables are visited; the last one remains selected.
+    For Each tbl In doc.Tables
+        tbl.Select
+    Next tbl
 
-    Dim fullRange As Range
-    Set fullRange = doc.Range( _
-        doc.Tables(1).Range.Start, _
-        doc.Tables(tableCount).Range.End)
-    fullRange.Select
-
-    MsgBox "All " & tableCount & " tables selected " & _
-           "(including any content between them).", _
-           vbInformation, "Done"
+    MsgBox tableCount & " table(s) found and selected.", vbInformation, "Done"
 End Sub
 
 
 ' ------------------------------------------------------------
 '  Macro 2: Convert All Tables to Three-Line Style
+'
+'  Three-line rules:
+'    Top border    — 1.5 pt thick
+'    Bottom border — 1.5 pt thick
+'    Row-1 bottom  — 0.75 pt thin  (header rule)
+'    All others    — removed
 ' ------------------------------------------------------------
 Sub ConvertToThreeLineTables()
 
@@ -58,8 +53,7 @@ Sub ConvertToThreeLineTables()
     tableCount = doc.Tables.Count
 
     If tableCount = 0 Then
-        MsgBox "No tables were found in this document.", _
-               vbInformation, "Notice"
+        MsgBox "No tables found in this document.", vbInformation, "Notice"
         Exit Sub
     End If
 
@@ -67,92 +61,67 @@ Sub ConvertToThreeLineTables()
         Call ApplyThreeLineStyle(doc.Tables(i))
     Next i
 
-    MsgBox "All " & tableCount & " table(s) converted to three-line style.", _
+    MsgBox tableCount & " table(s) converted to three-line style.", _
            vbInformation, "Done"
 End Sub
 
 
 ' ------------------------------------------------------------
-'  Helper: Apply three-line formatting to a single table
+'  Helper: Apply three-line style to one table
 ' ------------------------------------------------------------
 Private Sub ApplyThreeLineStyle(tbl As Table)
 
-    Const THICK_PT As Single = 1.5
-    Const THIN_PT  As Single = 0.75
-    Const LINE_CLR As Long   = 0     ' Black
-
-    Dim b  As Integer
     Dim rw As Row
     Dim cl As Cell
+    Dim b  As Integer
 
-    ' --- Border lists ---
-    ' Table-level: diagonal borders are NOT valid here (causes error 5941)
-    Dim tblBorders As Variant
-    tblBorders = Array( _
-        wdBorderTop, wdBorderBottom, wdBorderLeft, wdBorderRight, _
-        wdBorderHorizontal, wdBorderVertical)
+    ' Table-level borders (no diagonals — they are cell-only)
+    Dim tblB As Variant
+    tblB = Array(wdBorderTop, wdBorderBottom, wdBorderLeft, wdBorderRight, _
+                 wdBorderHorizontal, wdBorderVertical)
 
-    ' Cell-level: diagonals are valid on individual cells
-    Dim cellBorders As Variant
-    cellBorders = Array( _
-        wdBorderTop, wdBorderBottom, wdBorderLeft, wdBorderRight, _
-        wdBorderDiagonalDown, wdBorderDiagonalUp)
+    ' Cell-level borders (diagonals included)
+    Dim cellB As Variant
+    cellB = Array(wdBorderTop, wdBorderBottom, wdBorderLeft, wdBorderRight, _
+                  wdBorderDiagonalDown, wdBorderDiagonalUp)
 
-    ' Step 1 — Remove all borders from the table object
-    For b = 0 To UBound(tblBorders)
-        tbl.Borders(tblBorders(b)).LineStyle = wdLineStyleNone
+    ' Step 1 — Clear all table-level borders
+    For b = 0 To UBound(tblB)
+        tbl.Borders(tblB(b)).LineStyle = wdLineStyleNone
     Next b
 
-    ' Step 2 — Remove all borders from every individual cell
+    ' Step 2 — Clear all cell-level borders
     For Each rw In tbl.Rows
         For Each cl In rw.Cells
-            For b = 0 To UBound(cellBorders)
-                cl.Borders(cellBorders(b)).LineStyle = wdLineStyleNone
+            For b = 0 To UBound(cellB)
+                cl.Borders(cellB(b)).LineStyle = wdLineStyleNone
             Next b
         Next cl
     Next rw
 
-    ' Step 3 — Top rule (thick)
+    ' Step 3 — Top rule: 1.5 pt
     With tbl.Borders(wdBorderTop)
         .LineStyle = wdLineStyleSingle
-        .LineWidth = PointsToLineWidth(THICK_PT)
-        .Color     = LINE_CLR
+        .LineWidth = wdLineWidth150pt
+        .Color = wdColorBlack
     End With
 
-    ' Step 4 — Bottom rule (thick)
+    ' Step 4 — Bottom rule: 1.5 pt
     With tbl.Borders(wdBorderBottom)
         .LineStyle = wdLineStyleSingle
-        .LineWidth = PointsToLineWidth(THICK_PT)
-        .Color     = LINE_CLR
+        .LineWidth = wdLineWidth150pt
+        .Color = wdColorBlack
     End With
 
-    ' Step 5 — Header rule: bottom border of row 1 only (thin)
+    ' Step 5 — Header rule (row 1 bottom): 0.75 pt
     If tbl.Rows.Count >= 1 Then
         For Each cl In tbl.Rows(1).Cells
             With cl.Borders(wdBorderBottom)
                 .LineStyle = wdLineStyleSingle
-                .LineWidth = PointsToLineWidth(THIN_PT)
-                .Color     = LINE_CLR
+                .LineWidth = wdLineWidth075pt
+                .Color = wdColorBlack
             End With
         Next cl
     End If
 
 End Sub
-
-
-' ------------------------------------------------------------
-'  Helper: Map a point value to the nearest WdLineWidth constant
-' ------------------------------------------------------------
-Private Function PointsToLineWidth(pt As Single) As WdLineWidth
-    Select Case True
-        Case pt <= 0.375:  PointsToLineWidth = wdLineWidth025pt
-        Case pt <= 0.625:  PointsToLineWidth = wdLineWidth050pt
-        Case pt <= 0.875:  PointsToLineWidth = wdLineWidth075pt
-        Case pt <= 1.25:   PointsToLineWidth = wdLineWidth100pt
-        Case pt <= 1.875:  PointsToLineWidth = wdLineWidth150pt
-        Case pt <= 2.625:  PointsToLineWidth = wdLineWidth225pt
-        Case pt <= 3.75:   PointsToLineWidth = wdLineWidth300pt
-        Case pt <= 5.25:   PointsToLineWidth = wdLineWidth450pt
-        Case Else:         PointsToLineWidth = wdLineWidth600pt
-    End Select
-End Function
