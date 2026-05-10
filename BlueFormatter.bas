@@ -1,32 +1,42 @@
-Attribute VB_Name = "BlueFormatter"
+
 '=====================================================================
 ' BlueFormatter
 ' ---------------------------------------------------------------------
-' One-click recolor: cross-references, headings, captions, abstract,
-' keywords -> blue. Supports both English and Chinese style names.
+' One-click recolor:
+'   - Cross-references
+'   - Headings
+'   - Captions
+'   - Abstract
+'   - Keywords
+'
+' Supports English style names.
 '
 ' Usage:
-'   Open VBA editor (Alt+F11) -> File -> Import File -> select this .bas
-'   Run macro: ChangeToBlue
+'   1. Open VBA Editor (Alt + F11)
+'   2. File -> Import File
+'   3. Select this .bas file
+'   4. Run macro: ChangeToBlue
 '
-' Author: generated for personal use. Public domain.
+' Author: Karcen Zheng
 '=====================================================================
 
 Option Explicit
 
-' ---- Configurable color (Office Blue by default) --------------------
+'---------------------------------------------------------------------
+' Configurable target color (Office Blue)
+'---------------------------------------------------------------------
 Private Const TARGET_R As Integer = 0
 Private Const TARGET_G As Integer = 112
 Private Const TARGET_B As Integer = 192
 
 
-'======================================================================
-' MAIN ENTRY POINT
-'======================================================================
+'=====================================================================
+' MAIN ENTRY
+'=====================================================================
 Public Sub ChangeToBlue()
-    If Documents.Count = 0 Then
-        MsgBox "No active document. Please open a Word file first." & vbCrLf & _
-               "没有打开的文档，请先打开一个 Word 文件。", _
+
+    If Documents.count = 0 Then
+        MsgBox "No active document. Please open a Word document first.", _
                vbExclamation, "BlueFormatter"
         Exit Sub
     End If
@@ -37,115 +47,149 @@ Public Sub ChangeToBlue()
     Dim blueColor As Long
     blueColor = RGB(TARGET_R, TARGET_G, TARGET_B)
 
-    ' Save and disable state that could interfere
-    Dim screenWasOn As Boolean
-    Dim trackWasOn As Boolean
-    Dim showRevWasOn As Boolean
-    screenWasOn = Application.ScreenUpdating
-    trackWasOn = doc.TrackRevisions
-    showRevWasOn = doc.ShowRevisions
+    ' Save current application state
+    Dim screenUpdatingState As Boolean
+    Dim trackRevisionState As Boolean
+    Dim showRevisionState As Boolean
+
+    screenUpdatingState = Application.ScreenUpdating
+    trackRevisionState = doc.TrackRevisions
+    showRevisionState = doc.ShowRevisions
 
     Application.ScreenUpdating = False
     doc.TrackRevisions = False
 
     ' Counters
-    Dim styleCount As Long, paraCount As Long, fldCount As Long
-    styleCount = 0: paraCount = 0: fldCount = 0
+    Dim styleCount As Long
+    Dim paragraphCount As Long
+    Dim fieldCount As Long
 
-    '------------------------------------------------------------------
-    ' Step 1: Update style definitions (built-in IDs + named styles)
-    '------------------------------------------------------------------
-    Dim builtInIds As Variant
-    builtInIds = Array(wdStyleHeading1, wdStyleHeading2, wdStyleHeading3, _
-                       wdStyleHeading4, wdStyleHeading5, wdStyleHeading6, _
-                       wdStyleHeading7, wdStyleHeading8, wdStyleHeading9, _
-                       wdStyleCaption, wdStyleHyperlink, wdStyleTOC1, _
-                       wdStyleTOC2, wdStyleTOC3, wdStyleTOC4, wdStyleTOC5, _
-                       wdStyleTOC6, wdStyleTOC7, wdStyleTOC8, wdStyleTOC9)
+    styleCount = 0
+    paragraphCount = 0
+    fieldCount = 0
 
-    Dim bId As Variant
-    For Each bId In builtInIds
-        If SetStyleColorById(doc, CLng(bId), blueColor) Then
+    '-----------------------------------------------------------------
+    ' Step 1: Update built-in styles
+    '-----------------------------------------------------------------
+    Dim builtInStyles As Variant
+
+    builtInStyles = Array( _
+        wdStyleHeading1, wdStyleHeading2, wdStyleHeading3, _
+        wdStyleHeading4, wdStyleHeading5, wdStyleHeading6, _
+        wdStyleHeading7, wdStyleHeading8, wdStyleHeading9, _
+        wdStyleCaption, _
+        wdStyleHyperlink, _
+        wdStyleTOC1, wdStyleTOC2, wdStyleTOC3, _
+        wdStyleTOC4, wdStyleTOC5, wdStyleTOC6, _
+        wdStyleTOC7, wdStyleTOC8, wdStyleTOC9)
+
+    Dim styleId As Variant
+
+    For Each styleId In builtInStyles
+        If SetStyleColorById(doc, CLng(styleId), blueColor) Then
             styleCount = styleCount + 1
         End If
-    Next bId
+    Next styleId
 
-    ' Custom / non-built-in style names (English + Chinese variants)
-    Dim customNames As Variant
-    customNames = Array( _
-        "Abstract", "Abstract Title", "Abstract Heading", "Abstract Body", _
-        "Keywords", "Keyword", "Key Words", "Keyword Text", "Keywords Heading", _
-        "摘要", "摘要标题", "摘要正文", "摘要内容", "中文摘要", "英文摘要", _
-        "关键词", "关键字", "关键词标题", "关键词正文", "中文关键词", "英文关键词", _
-        "题注", "超链接", _
-        "Heading 1 Char", "Heading 2 Char", "Heading 3 Char", _
-        "Heading 4 Char", "Heading 5 Char", "Heading 6 Char", _
+    '-----------------------------------------------------------------
+    ' Step 2: Update custom style names
+    '-----------------------------------------------------------------
+    Dim customStyles As Variant
+
+    customStyles = Array( _
+        "Abstract", _
+        "Abstract Title", _
+        "Abstract Heading", _
+        "Abstract Body", _
+        "Keywords", _
+        "Keyword", _
+        "Key Words", _
+        "Keyword Text", _
+        "Keywords Heading", _
+        "Heading 1 Char", _
+        "Heading 2 Char", _
+        "Heading 3 Char", _
+        "Heading 4 Char", _
+        "Heading 5 Char", _
+        "Heading 6 Char", _
         "Caption Char")
 
-    Dim cn As Variant
-    For Each cn In customNames
-        If SetStyleColorByName(doc, CStr(cn), blueColor) Then
+    Dim styleName As Variant
+
+    For Each styleName In customStyles
+        If SetStyleColorByName(doc, CStr(styleName), blueColor) Then
             styleCount = styleCount + 1
         End If
-    Next cn
+    Next styleName
 
-    '------------------------------------------------------------------
-    ' Step 2: Recolor cross-reference fields in every story range
-    '------------------------------------------------------------------
+    '-----------------------------------------------------------------
+    ' Step 3: Recolor fields in all story ranges
+    '-----------------------------------------------------------------
     Dim story As Range
+
     For Each story In doc.StoryRanges
-        RecolorFieldsInRange story, blueColor, fldCount
-        ' Walk linked stories (multi-section headers/footers)
+
+        RecolorFieldsInRange story, blueColor, fieldCount
+
         Dim nextStory As Range
         Set nextStory = story.NextStoryRange
+
         Do Until nextStory Is Nothing
-            RecolorFieldsInRange nextStory, blueColor, fldCount
+            RecolorFieldsInRange nextStory, blueColor, fieldCount
             Set nextStory = nextStory.NextStoryRange
         Loop
+
     Next story
 
-    '------------------------------------------------------------------
-    ' Step 3: Force-apply blue to paragraphs that use target styles.
-    '         Catches direct formatting that overrides style definition.
-    '------------------------------------------------------------------
+    '-----------------------------------------------------------------
+    ' Step 4: Recolor paragraphs using target styles
+    '-----------------------------------------------------------------
     For Each story In doc.StoryRanges
-        RecolorParagraphsInRange story, blueColor, paraCount
-        Dim nxt As Range
-        Set nxt = story.NextStoryRange
-        Do Until nxt Is Nothing
-            RecolorParagraphsInRange nxt, blueColor, paraCount
-            Set nxt = nxt.NextStoryRange
+
+        RecolorParagraphsInRange story, blueColor, paragraphCount
+
+        Dim linkedStory As Range
+        Set linkedStory = story.NextStoryRange
+
+        Do Until linkedStory Is Nothing
+            RecolorParagraphsInRange linkedStory, blueColor, paragraphCount
+            Set linkedStory = linkedStory.NextStoryRange
         Loop
+
     Next story
 
-    '------------------------------------------------------------------
-    ' Step 4: Handle text inside shapes / text boxes (best effort)
-    '------------------------------------------------------------------
-    RecolorShapes doc, blueColor, fldCount, paraCount
+    '-----------------------------------------------------------------
+    ' Step 5: Recolor shapes and text boxes
+    '-----------------------------------------------------------------
+    RecolorShapes doc, blueColor, fieldCount, paragraphCount
 
-    '------------------------------------------------------------------
-    ' Restore state
-    '------------------------------------------------------------------
-    doc.TrackRevisions = trackWasOn
-    doc.ShowRevisions = showRevWasOn
-    Application.ScreenUpdating = screenWasOn
+    '-----------------------------------------------------------------
+    ' Restore original application state
+    '-----------------------------------------------------------------
+    doc.TrackRevisions = trackRevisionState
+    doc.ShowRevisions = showRevisionState
+    Application.ScreenUpdating = screenUpdatingState
+
     Application.ScreenRefresh
 
-    MsgBox "Done! / 完成！" & vbCrLf & vbCrLf & _
-           "Styles updated / 样式更新:     " & styleCount & vbCrLf & _
-           "Paragraphs updated / 段落更新: " & paraCount & vbCrLf & _
-           "Fields updated / 字段更新:     " & fldCount, _
-           vbInformation, "BlueFormatter"
+    MsgBox _
+        "Completed successfully." & vbCrLf & vbCrLf & _
+        "Styles updated: " & styleCount & vbCrLf & _
+        "Paragraphs updated: " & paragraphCount & vbCrLf & _
+        "Fields updated: " & fieldCount, _
+        vbInformation, "BlueFormatter"
+
 End Sub
 
 
-'======================================================================
-' DIAGNOSTIC: list every style name actually used in the document.
-' Run this if the main macro misses something - it tells you the
-' exact style name to add to customNames.
-'======================================================================
+'=====================================================================
+' DIAGNOSTIC TOOL
+' Lists all styles currently used in the document
+'=====================================================================
 Public Sub ListUsedStyles()
-    If Documents.Count = 0 Then Exit Sub
+
+    If Documents.count = 0 Then Exit Sub
+
     Dim doc As Document
     Set doc = ActiveDocument
 
@@ -153,35 +197,52 @@ Public Sub ListUsedStyles()
     Set dict = CreateObject("Scripting.Dictionary")
 
     Dim para As Paragraph
-    Dim sname As String
+    Dim currentStyle As String
+
     For Each para In doc.Paragraphs
-        sname = SafeStyleName(para)
-        If Len(sname) > 0 Then
-            If Not dict.Exists(sname) Then dict.Add sname, 1
+
+        currentStyle = SafeStyleName(para)
+
+        If Len(currentStyle) > 0 Then
+            If Not dict.Exists(currentStyle) Then
+                dict.Add currentStyle, 1
+            End If
         End If
+
     Next para
 
-    Dim out As String
-    out = "Styles in use (" & dict.Count & "):" & vbCrLf & String(40, "-") & vbCrLf
-    Dim k As Variant
-    For Each k In dict.Keys
-        out = out & k & vbCrLf
-    Next k
-    MsgBox out, vbInformation, "BlueFormatter - ListUsedStyles"
+    Dim outputText As String
+    outputText = "Styles currently in use (" & dict.count & "):" & _
+                 vbCrLf & String(40, "-") & vbCrLf
+
+    Dim key As Variant
+
+    For Each key In dict.Keys
+        outputText = outputText & key & vbCrLf
+    Next key
+
+    MsgBox outputText, vbInformation, "BlueFormatter - Style Report"
+
 End Sub
 
 
-'======================================================================
-' HELPERS
-'======================================================================
+'=====================================================================
+' HELPER FUNCTIONS
+'=====================================================================
 
-' Set color of a built-in style by its constant ID.
-' Returns True on success, False if style is unavailable.
-Private Function SetStyleColorById(doc As Document, builtInId As Long, _
-                                    clr As Long) As Boolean
+'---------------------------------------------------------------------
+' Set font color for a built-in style
+'---------------------------------------------------------------------
+Private Function SetStyleColorById( _
+    doc As Document, _
+    builtInId As Long, _
+    clr As Long) As Boolean
+
     On Error Resume Next
+
     Dim s As Style
     Set s = doc.Styles(builtInId)
+
     If Err.Number <> 0 Or s Is Nothing Then
         SetStyleColorById = False
         Err.Clear
@@ -190,25 +251,34 @@ Private Function SetStyleColorById(doc As Document, builtInId As Long, _
     End If
 
     s.Font.ColorIndex = wdAuto
-    Err.Clear
     s.Font.Color = clr
+
     SetStyleColorById = (Err.Number = 0)
+
     Err.Clear
     On Error GoTo 0
+
 End Function
 
 
-' Set color of a style looked up by name. Tries the name as-is.
-Private Function SetStyleColorByName(doc As Document, styleName As String, _
-                                      clr As Long) As Boolean
+'---------------------------------------------------------------------
+' Set font color for a style by name
+'---------------------------------------------------------------------
+Private Function SetStyleColorByName( _
+    doc As Document, _
+    styleName As String, _
+    clr As Long) As Boolean
+
     If Len(styleName) = 0 Then
         SetStyleColorByName = False
         Exit Function
     End If
 
     On Error Resume Next
+
     Dim s As Style
     Set s = doc.Styles(styleName)
+
     If Err.Number <> 0 Or s Is Nothing Then
         SetStyleColorByName = False
         Err.Clear
@@ -217,132 +287,215 @@ Private Function SetStyleColorByName(doc As Document, styleName As String, _
     End If
 
     s.Font.ColorIndex = wdAuto
-    Err.Clear
     s.Font.Color = clr
+
     SetStyleColorByName = (Err.Number = 0)
+
     Err.Clear
     On Error GoTo 0
+
 End Function
 
 
-' Recolor cross-reference fields inside a Range.
-Private Sub RecolorFieldsInRange(rng As Range, clr As Long, ByRef fldCount As Long)
+'---------------------------------------------------------------------
+' Recolor cross-reference related fields
+'---------------------------------------------------------------------
+Private Sub RecolorFieldsInRange( _
+    rng As Range, _
+    clr As Long, _
+    ByRef fieldCount As Long)
+
     If rng Is Nothing Then Exit Sub
+
     On Error Resume Next
+
     Dim fld As Field
+
     For Each fld In rng.Fields
+
         Select Case fld.Type
-            Case wdFieldRef, wdFieldPageRef, wdFieldNoteRef, _
-                 wdFieldFootnoteRef, wdFieldEndnoteRef, _
-                 wdFieldHyperlink, wdFieldStyleRef, _
-                 wdFieldSequence, wdFieldTOC, wdFieldTOA
-                Err.Clear
+
+            Case wdFieldRef, _
+                 wdFieldPageRef, _
+                 wdFieldNoteRef, _
+                 wdFieldFootnoteRef, _
+                 wdFieldHyperlink, _
+                 wdFieldStyleRef, _
+                 wdFieldSequence, _
+                 wdFieldTOC, _
+                 wdFieldTOA
+
                 fld.Result.Font.Color = clr
-                If Err.Number = 0 Then fldCount = fldCount + 1
+
+                If Err.Number = 0 Then
+                    fieldCount = fieldCount + 1
+                End If
+
                 Err.Clear
+
         End Select
+
     Next fld
+
     On Error GoTo 0
+
 End Sub
 
 
-' Recolor every paragraph in Range that uses a target style.
-Private Sub RecolorParagraphsInRange(rng As Range, clr As Long, _
-                                      ByRef paraCount As Long)
+'---------------------------------------------------------------------
+' Recolor paragraphs using matching styles
+'---------------------------------------------------------------------
+Private Sub RecolorParagraphsInRange( _
+    rng As Range, _
+    clr As Long, _
+    ByRef paragraphCount As Long)
+
     If rng Is Nothing Then Exit Sub
+
     On Error Resume Next
+
     Dim para As Paragraph
-    Dim sname As String
+    Dim styleName As String
+
     For Each para In rng.Paragraphs
-        sname = SafeStyleName(para)
-        If IsTargetStyle(sname) Then
-            Err.Clear
+
+        styleName = SafeStyleName(para)
+
+        If IsTargetStyle(styleName) Then
+
             para.Range.Font.Color = clr
-            If Err.Number = 0 Then paraCount = paraCount + 1
+
+            If Err.Number = 0 Then
+                paragraphCount = paragraphCount + 1
+            End If
+
             Err.Clear
+
         End If
+
     Next para
+
     On Error GoTo 0
+
 End Sub
 
 
-' Recolor inside floating shapes / text boxes.
-Private Sub RecolorShapes(doc As Document, clr As Long, _
-                           ByRef fldCount As Long, ByRef paraCount As Long)
+'---------------------------------------------------------------------
+' Recolor text inside shapes and text boxes
+'---------------------------------------------------------------------
+Private Sub RecolorShapes( _
+    doc As Document, _
+    clr As Long, _
+    ByRef fieldCount As Long, _
+    ByRef paragraphCount As Long)
+
     On Error Resume Next
+
     Dim shp As Shape
+
     For Each shp In doc.Shapes
+
         If shp.TextFrame.HasText Then
+
             Dim r As Range
             Set r = shp.TextFrame.TextRange
-            RecolorFieldsInRange r, clr, fldCount
-            RecolorParagraphsInRange r, clr, paraCount
+
+            RecolorFieldsInRange r, clr, fieldCount
+            RecolorParagraphsInRange r, clr, paragraphCount
+
         End If
+
     Next shp
 
-    Dim ishp As InlineShape
-    For Each ishp In doc.InlineShapes
-        ' Inline shapes rarely host text bodies but try anyway
-        If ishp.OLEFormat Is Nothing Then
-            ' nothing to do
-        End If
-    Next ishp
     On Error GoTo 0
+
 End Sub
 
 
-' Get a paragraph's style name without throwing.
+'---------------------------------------------------------------------
+' Safely retrieve paragraph style name
+'---------------------------------------------------------------------
 Private Function SafeStyleName(para As Paragraph) As String
+
     On Error Resume Next
-    Dim n As String
-    n = ""
-    n = CStr(para.Style)
-    SafeStyleName = n
+
+    Dim styleName As String
+    styleName = CStr(para.Style)
+
+    SafeStyleName = styleName
+
     Err.Clear
     On Error GoTo 0
+
 End Function
 
 
-' Decide whether a style name is one we want to recolor.
-' Matches English and Chinese variants, with tolerance for
-' spacing/case and "Char" companion styles.
+'---------------------------------------------------------------------
+' Determine whether a style should be recolored
+'---------------------------------------------------------------------
 Private Function IsTargetStyle(styleName As String) As Boolean
+
     IsTargetStyle = False
+
     If Len(styleName) = 0 Then Exit Function
 
-    Dim lower As String
-    lower = LCase$(Trim$(styleName))
+    Dim lowerName As String
+    lowerName = LCase$(Trim$(styleName))
 
-    '--- Heading 1..9 (English) ---
     Dim i As Integer
+
+    ' Heading styles
     For i = 1 To 9
-        If lower = "heading " & i Then IsTargetStyle = True: Exit Function
-        If lower = "heading" & i Then IsTargetStyle = True: Exit Function
-        If lower = "heading " & i & " char" Then IsTargetStyle = True: Exit Function
+
+        If lowerName = "heading " & i Then
+            IsTargetStyle = True
+            Exit Function
+        End If
+
+        If lowerName = "heading" & i Then
+            IsTargetStyle = True
+            Exit Function
+        End If
+
+        If lowerName = "heading " & i & " char" Then
+            IsTargetStyle = True
+            Exit Function
+        End If
+
     Next i
 
-    '--- 标题 1..9 (Chinese) ---
-    For i = 1 To 9
-        If styleName = "标题 " & i Then IsTargetStyle = True: Exit Function
-        If styleName = "标题" & i Then IsTargetStyle = True: Exit Function
-    Next i
+    ' Caption styles
+    If lowerName = "caption" Then
+        IsTargetStyle = True
+        Exit Function
+    End If
 
-    '--- Caption / 题注 ---
-    If lower = "caption" Then IsTargetStyle = True: Exit Function
-    If lower = "caption char" Then IsTargetStyle = True: Exit Function
-    If styleName = "题注" Then IsTargetStyle = True: Exit Function
+    If lowerName = "caption char" Then
+        IsTargetStyle = True
+        Exit Function
+    End If
 
-    '--- Abstract / 摘要 ---
-    If InStr(lower, "abstract") > 0 Then IsTargetStyle = True: Exit Function
-    If InStr(styleName, "摘要") > 0 Then IsTargetStyle = True: Exit Function
+    ' Abstract styles
+    If InStr(lowerName, "abstract") > 0 Then
+        IsTargetStyle = True
+        Exit Function
+    End If
 
-    '--- Keywords / 关键词 ---
-    If InStr(lower, "keyword") > 0 Then IsTargetStyle = True: Exit Function
-    If InStr(lower, "key words") > 0 Then IsTargetStyle = True: Exit Function
-    If InStr(styleName, "关键词") > 0 Then IsTargetStyle = True: Exit Function
-    If InStr(styleName, "关键字") > 0 Then IsTargetStyle = True: Exit Function
+    ' Keyword styles
+    If InStr(lowerName, "keyword") > 0 Then
+        IsTargetStyle = True
+        Exit Function
+    End If
 
-    '--- TOC entries (often colored differently) ---
-    If lower Like "toc#" Or lower Like "toc #" Then IsTargetStyle = True: Exit Function
-    If styleName Like "目录 #" Then IsTargetStyle = True: Exit Function
+    If InStr(lowerName, "key words") > 0 Then
+        IsTargetStyle = True
+        Exit Function
+    End If
+
+    ' Table of contents styles
+    If lowerName Like "toc#" Or lowerName Like "toc #" Then
+        IsTargetStyle = True
+        Exit Function
+    End If
+
 End Function
