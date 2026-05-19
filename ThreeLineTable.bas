@@ -1,41 +1,9 @@
 ' ============================================================
-'  Macro 1: SelectAllTables          — Select every table in the document
-'  Macro 2: ConvertToThreeLineTables — Convert all tables to three-line style
+'  Macro: ConvertToThreeLineTables — Convert all tables to three-line style
 ' ============================================================
 
-Option Explicit
-
 ' ------------------------------------------------------------
-'  Macro 1: Select All Tables
-' ------------------------------------------------------------
-Sub SelectAllTables()
-
-    Dim doc        As Document
-    Dim tbl        As Table
-    Dim tableCount As Integer
-
-    Set doc = ActiveDocument
-    tableCount = doc.Tables.Count
-
-    If tableCount = 0 Then
-        MsgBox "No tables found in this document.", vbInformation, "Notice"
-        Exit Sub
-    End If
-
-    ' Select each table one by one
-    ' Word does not support discontinuous selections,
-    ' so each call moves the cursor to that table.
-    ' All tables are visited; the last one remains selected.
-    For Each tbl In doc.Tables
-        tbl.Select
-    Next tbl
-
-    MsgBox tableCount & " table(s) found and selected.", vbInformation, "Done"
-End Sub
-
-
-' ------------------------------------------------------------
-'  Macro 2: Convert All Tables to Three-Line Style
+'  Macro: Convert All Tables to Three-Line Style
 '
 '  Three-line rules:
 '    Top border    — 1.5 pt thick
