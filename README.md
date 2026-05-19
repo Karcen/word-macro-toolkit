@@ -31,7 +31,6 @@ Run `ListUsedStyles` to see all style names used in your document. This helps id
 ## ThreeLineTable
 
 ### Features
-- **SelectAllTables**: Selects all tables in the document at once
 - **ConvertToThreeLineTables**: Converts all tables to the professional three-line style format
   - Thick top border (1.5pt)
   - Thick bottom border (1.5pt)
@@ -43,7 +42,6 @@ Run `ListUsedStyles` to see all style names used in your document. This helps id
 1. Open the VBA editor in Word (`Alt+F11`)
 2. Insert a new module or import `ThreeLineTable.bas`
 3. Run either:
-   - `SelectAllTables` to select all tables
    - `ConvertToThreeLineTables` to format all tables
 
 ## Installation
